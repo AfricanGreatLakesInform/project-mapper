@@ -1,0 +1,198 @@
+<html>
+
+<head>
+    <meta charset=utf-8 />
+    <title>African Great Lakes Project Mapper</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+  <!-- Load Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet-src.js"></script>
+    
+  <!-- Load Marker Clusters -->    
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.0.4/MarkerCluster.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.0.4/MarkerCluster.Default.css" />
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.0.4/leaflet.markercluster.js'></script>
+  
+  <!-- Load Esri Leaflet -->
+    <script src="https://unpkg.com/esri-leaflet@2.0.7"></script>
+
+  <!-- Load GeoJSON Files -->
+    <script src="data/basinsLn.geojson"></script>
+    <script src="data/projects.geojson"></script>
+
+    <style>
+        body { margin:0; padding:0; }
+        #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+    </style>
+</head>
+
+<body>
+
+<style>
+  #basemaps-wrapper {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 400;
+    background: white;
+    padding: 10px;
+  }
+  
+  #basemaps {
+    margin-bottom: 5px;
+  }
+  
+  #check-wrapper{
+    position: absolute;
+    bottom: 20px;
+    right: 10px;
+    z-index: 400;
+    background: white;
+    padding: 10px;
+  }}
+  
+</style>
+
+<div id="map"></div>
+
+<div id="basemaps-wrapper" class="leaflet-bar">
+  <select name="basemaps" id="basemaps" onChange="changeBasemap(basemaps)">
+    <option value="Topographic">Topographic</option>
+    <option value="Streets">Streets</option>
+    <option value="NationalGeographic">National Geographic</option>
+    <option value="Oceans">Oceans</option>
+    <option value="Gray">Gray</option>
+    <option value="DarkGray">Dark Gray</option>
+    <option value="Imagery">Imagery</option>
+    <option value="ShadedRelief">Shaded Relief</option>
+  </select>
+</div>
+<div id="check-wrapper" class="leaflet-bar">
+	<h2>Select Project Types to Map</h2>
+	<form id="checkBoxes" name="checkBoxes">
+	  <input type="checkbox" name="ESB" value="ESB" checked> Ecosystem Services and Biodiversity<br>
+	  <input type="checkbox" name="SFA" value="SFA" checked> Sustainable Fisheries and Aquaculture<br>
+	  <input type="checkbox" name="CC" value="CC" checked> Climate Change<br>
+	  <input type="checkbox" name="PHE" value="PHE" checked> Population, Health and Environment<br>
+	  <input type="checkbox" name="CON_DEV" value="CON_DEV" checked> Balancing Conservation and Development<br>
+	  <input type="checkbox" name="GOV_FIN" value="GOV_FIN" checked> Governance and Financing<br>
+	  <input type="checkbox" name="GEN" value="GEN" checked> Gender<br>
+	  <input type="checkbox" name="POLL" value="POLL" checked> Water Quality and Pollution Control<br><br>
+	  <input type="checkbox" name="BASINS" value="BASINS" > Show Basin Boundaries<br>
+	</form>
+</div>
+
+
+<script>
+
+    
+    var map = L.map('map').setView([-2, 32], 6);
+    var layer = L.esri.basemapLayer('Topographic').addTo(map);
+    //var layerLabels;
+	//var projLayer = 0;
+    //var projLayer = L.geoJson(projects);
+    var basinsLayer = L.geoJson(basinsLn, { weight: 2});
+    
+    var geojsonMarkerOptions = {
+        radius: 4,
+        fillColor: "#ff7800",
+        color: "#000",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+    };
+	
+	// Function for displaying appropriate information in the popup
+	function onEachFeature(feature, layer) {
+	  if (!feature.properties || !feature.properties.P_NAM)
+		  return;       
+	  var popupOptions = {maxWidth: 250};
+	  var popupContent = "<h3>" + feature.properties.P_NAM + "</h3>" +
+		  feature.properties.DESC + "<br><a href='" + feature.properties.WEB + "'target='_blank'>Website</a>" + "<br>" + "<b>Contact: </b>" + feature.properties.CONTACT + " " + "<a href='mailto:" + feature.properties.EMAIL + "'>Email</a>" + "<br>" + "<b>Phone: </b>" + " " + feature.properties.PHONE + "<br>" + "<b>Address:</b>" + " " + feature.properties.ADDRESS + "<br>" + "<b>Project Type(s):</b>" + " " + feature.properties.THEMES
+	  layer.bindPopup(popupContent,popupOptions);
+	}    
+    
+	//funtion to load the projects - in the beginning have everything loaded
+	loadProjects("All");
+	function loadProjects(themes){
+		projLayer = L.geoJSON(projects, {
+		pointToLayer: function (feature, latlng) {
+			if (themes == "All"){
+				return L.circleMarker(latlng, geojsonMarkerOptions);
+			}
+			if (themes.indexOf("BASINS") >= 0){
+				map.addLayer(basinsLayer);
+			}
+			else{map.removeLayer(basinsLayer);}
+			for (var i=0; i<themes.length; i++){
+				var currTheme = themes[i]
+				if (feature.properties[currTheme] == 1){
+					return L.circleMarker(latlng, geojsonMarkerOptions);
+				}
+			}
+		},
+		onEachFeature: onEachFeature
+		});
+		map.addLayer(projLayer);
+	}
+
+	
+	// Get an array of the currently checked check boxes
+	function getCheckedBoxes(chkBoxes) {
+	    var checkboxes = document.getElementsByTagName('input');
+	    var checkboxesChecked = []; 
+	    for (var i=0; i<checkboxes.length; i++) {
+		   if (checkboxes[i].checked) {
+			  checkboxesChecked.push(checkboxes[i]);
+		   }
+	    }
+	    return checkboxesChecked.length > 0 ? checkboxesChecked : null;
+	};
+
+	//add an event listener to the checkboxes to listen for changes
+	//make an array of the currently checked thems and load themeNames//into the map
+	checkBoxes.addEventListener('change', function(e) {
+		showProjects = getCheckedBoxes("checkBoxes");
+		if (projLayer != 0){map.removeLayer(projLayer)}
+		var themeNames =[];
+		for (var i=0; i<showProjects.length; i++){
+			themeNames.push(showProjects[i].name)
+		}
+		loadProjects(themeNames);
+	});
+
+	function setBasemap(basemap) {
+	if (layer) {
+	  map.removeLayer(layer);
+	}
+
+	layer = L.esri.basemapLayer(basemap);
+
+	map.addLayer(layer);
+
+	if (layerLabels) {
+	  map.removeLayer(layerLabels);
+	}
+
+	if (basemap === 'ShadedRelief'
+	 || basemap === 'Oceans'
+	 || basemap === 'Gray'
+	 || basemap === 'DarkGray'
+	 || basemap === 'Imagery'
+	 || basemap === 'Terrain'
+	) {
+	  layerLabels = L.esri.basemapLayer(basemap + 'Labels');
+	  map.addLayer(layerLabels);
+	}
+	}
+
+	function changeBasemap(basemaps){
+	var basemap = basemaps.value;
+	setBasemap(basemap);
+	}
+
+</script>
+
+</body>
+</html>
